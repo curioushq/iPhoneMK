@@ -56,10 +56,35 @@
 @synthesize strokeColor;
 @synthesize strokeWidth;
 @synthesize textColor;
-@synthesize alignment;
 @dynamic badgeSize;
 @synthesize pad;
 @synthesize hideWhenZero;
+@synthesize badgeAlignment = _badgeAlignment;
+
+- (id)initWithFrameToFitText:(NSString *)patternText withFont:(UIFont *)aFont
+{
+    if (aFont == nil)
+    {
+        aFont = [UIFont boldSystemFontOfSize:16];
+    }
+    
+    NSDictionary *attributes = [NSDictionary dictionaryWithObjectsAndKeys:aFont, NSFontAttributeName, nil];
+    NSAttributedString *attrText = [[NSAttributedString alloc] initWithString:patternText
+                                                                   attributes:attributes];
+    CGSize badgeSize = [[self class] defaultBadgeSizeForTextSize:[attrText size]];
+    [attrText release];
+    
+    CGRect frame = (CGRect){{0, 0}, badgeSize};
+    
+    self = [self initWithFrame:frame];
+    
+    if (self != nil)
+    {
+        self.font = aFont;
+    }
+    
+    return self;
+}
 
 - (id)initWithFrame:(CGRect)frame 
 {
@@ -82,6 +107,23 @@
     return self;
 }
 
++ (CGSize)defaultBadgeSizeForTextSize:(CGSize)textSize
+{
+    CGFloat arcRadius = ceil((textSize.height + 2.0) / 2.0);
+	CGFloat badgeWidthAdjustment = textSize.width - textSize.height / 2.0;
+	CGFloat badgeWidth = 2.0 * arcRadius;
+	
+	if (badgeWidthAdjustment > 0.0)
+	{
+		badgeWidth += badgeWidthAdjustment;
+	}
+    
+    CGSize defaultShadowOffset = CGSizeMake(0, 3);
+    CGFloat defaultStrokeWidth = 2.0;
+    
+    return CGSizeMake(badgeWidth + arcRadius + defaultStrokeWidth + 2 * defaultShadowOffset.width,
+                      2 * arcRadius + defaultStrokeWidth + 2 * defaultShadowOffset.height);
+}
 
 #pragma mark -- private methods --
 
@@ -94,7 +136,6 @@
 	self.shadowOffset = CGSizeMake(0, 3);
 	self.shadowColor = [[UIColor blackColor] colorWithAlphaComponent:0.5];
 	self.shine = YES;
-	self.alignment = NSTextAlignmentCenter;
 	self.fillColor = [UIColor redColor];
 	self.strokeColor = [UIColor whiteColor];
 	self.strokeWidth = 2.0;
@@ -102,6 +143,7 @@
     self.hideWhenZero = NO;
 	self.adjustOffset = CGPointZero;
     self.textFormat = @"%d";
+    self.badgeAlignment = MKBadgeAlignmentCenter;
     
 	self.backgroundColor = [UIColor clearColor];
 }
@@ -116,7 +158,6 @@
     
     [super dealloc];
 }
-
 
 - (void)drawRect:(CGRect)rect 
 {
@@ -144,28 +185,48 @@
 	CGContextSetStrokeColorWithColor(  curContext, self.strokeColor.CGColor  );
 	CGContextSetFillColorWithColor( curContext, self.fillColor.CGColor );
 	
-	// Line stroke straddles the path, so we need to account for the outer portion
-	badgeRect.size.width += ceilf( self.strokeWidth / 2 );
-	badgeRect.size.height += ceilf( self.strokeWidth / 2 );
-	
 	CGPoint ctm;
 	
-	switch (self.alignment)
+    // Value to correct badge alignment by stroke and shadow offsets.
+    CGFloat strokeOffset = ceilf( self.strokeWidth ) + 1;
+    
+    switch (self.badgeAlignment)
 	{
-		case NSTextAlignmentJustified:
-		case NSTextAlignmentNatural:
-		case NSTextAlignmentCenter:
-			ctm = CGPointMake( round((viewBounds.size.width - badgeRect.size.width)/2), round((viewBounds.size.height - badgeRect.size.height)/2) );
-			break;
-		case NSTextAlignmentLeft:
-			ctm = CGPointMake( 0, round((viewBounds.size.height - badgeRect.size.height)/2) );
-			break;
-		case NSTextAlignmentRight:
-			ctm = CGPointMake( (viewBounds.size.width - badgeRect.size.width), round((viewBounds.size.height - badgeRect.size.height)/2) );
-			break;
+		case MKBadgeAlignmentCenter:
+            ctm = CGPointMake(round((viewBounds.size.width - badgeRect.size.width) / 2),
+                              round((viewBounds.size.height - badgeRect.size.height) / 2));
+            break;
+        case MKBadgeAlignmentTopRight:
+            ctm = CGPointMake(viewBounds.size.width - badgeRect.size.width - self.shadowOffset.width - strokeOffset,
+                              ((self.shadowOffset.height > 0) ? 0 : -self.shadowOffset.height) + strokeOffset);
+            break;
+        case MKBadgeAlignmentTopLeft:
+			ctm = CGPointMake(((self.shadowOffset.width > 0) ? 0 : -self.shadowOffset.width) + strokeOffset,
+                              ((self.shadowOffset.height > 0) ? 0 : -self.shadowOffset.height) + strokeOffset);
+            break;
+        case MKBadgeAlignmentBottomLeft:
+			ctm = CGPointMake(((self.shadowOffset.width > 0) ? 0 : -self.shadowOffset.width) + strokeOffset,
+                              (viewBounds.size.height - badgeRect.size.height - self.shadowOffset.height - strokeOffset));
+            break;
+        case MKBadgeAlignmentBottomRight:
+			ctm = CGPointMake((viewBounds.size.width - badgeRect.size.width - self.shadowOffset.width - strokeOffset),
+                              (viewBounds.size.height - badgeRect.size.height - self.shadowOffset.height - strokeOffset));
+            break;
+        case MKBadgeAlignmentRight:
+            ctm = CGPointMake((viewBounds.size.width - badgeRect.size.width - strokeOffset),
+                              round((viewBounds.size.height - badgeRect.size.height) / 2));
+            break;
+        case MKBadgeAlignmentLeft:
+			ctm = CGPointMake(((self.shadowOffset.width > 0) ? 0 : -self.shadowOffset.width) + strokeOffset,
+                              round((viewBounds.size.height - badgeRect.size.height) / 2));
+            break;
 	}
 	
 	CGContextTranslateCTM( curContext, ctm.x, ctm.y);
+	
+	// Line stroke straddles the path, so we need to account for the outer portion
+	badgeRect.size.width += ceilf( self.strokeWidth / 2 );
+	badgeRect.size.height += ceilf( self.strokeWidth / 2 );
 
 	if (self.shadow)
 	{
@@ -301,7 +362,5 @@
 	
 	return badgeRect.size;
 }
-
-
 
 @end

@@ -32,10 +32,40 @@
 #import <UIKit/UIKit.h>
 
 
+typedef NS_ENUM(NSUInteger, MKBadgeAlignment)
+{
+    MKBadgeAlignmentCenter = 0,
+    MKBadgeAlignmentTopRight,
+    MKBadgeAlignmentTopLeft,
+    MKBadgeAlignmentBottomLeft,
+    MKBadgeAlignmentBottomRight,
+    MKBadgeAlignmentLeft,
+    MKBadgeAlignmentRight
+};
+
 @interface MKNumberBadgeView : UIView 
 {
 	NSUInteger _value;
 }
+
+/*!
+ * @brief Initializes and returns newly allocated badge view object
+ * with frame that fits given text.
+ * @note Uses default values (pad, shadowOffset etc.) to calculate the frame.
+ * @param patternText The text which must fit the frame entirely.
+ * @param aFont Font for pattern text with appropriate size.
+ * If aFont is nil, default font will be used (bold System font of size 16).
+ * @return Initialized badge view object or nil of the object couldn't
+ * be created.
+ */
+- (id)initWithFrameToFitText:(NSString *)patternText withFont:(UIFont *)aFont;
+
+/*!
+ * @brief Returns badge size with default values of font and pad that fits given text.
+ * @param textSize Size of text that will be used to calculate the badge's bounds size.
+ * @return Badge size that includes shadow offset, stroke width etc.
+ */
++ (CGSize)defaultBadgeSizeForTextSize:(CGSize)textSize;
 
 // Text format for the badge, defaults to just the number
 @property (retain,nonatomic) NSString *textFormat;
@@ -74,9 +104,6 @@
 // The color to be used for drawing the badge's numbers.
 @property (retain,nonatomic) UIColor* textColor;
 
-// How the badge image hould be aligned horizontally in the view. 
-@property (assign,nonatomic) NSTextAlignment alignment;
-
 // Returns the visual size of the badge for the current value. Not the same hing as the size of the view's bounds.
 // The badge view bounds should be wider than space needed to draw the badge.
 @property (readonly,nonatomic) CGSize badgeSize;
@@ -87,5 +114,8 @@
 
 // If YES, the badge will be hidden when the value is 0
 @property (nonatomic) BOOL hideWhenZero;
+
+// Defines alignment of drawn badge in frame. Default is MKBadgeAlignmentCenter.
+@property (nonatomic) MKBadgeAlignment badgeAlignment;
 
 @end
